@@ -1,79 +1,34 @@
-//! Aufgabe 1 (`exercises/Angaben01-02.pdf`, Beispiel 1): one of sudoku,
-//! GPS polygon, curved mirror or meteorite. Sudoku and GPS are wired up.
+//! Aufgabe 1, `exercises/Angaben01-02.pdf` (Beispiel 1). Due 2026-10-19.
 //!
-//! Run from the repo root, the data paths are relative to it:
+//! Pick one of:
 //!
-//!     cargo run --bin aufgabe1 -- sudoku
-//!     cargo run --bin aufgabe1 -- gps
+//! 1. Sudoku (`data/sudokus/`): solve at least the easy ones.
+//!    - every cell starts with the candidate list 1..=9
+//!    - strike each given from the lists in its row, column and box
+//!    - a digit that appears in only one list of a row, column or box is
+//!      fixed there; a list with one entry left is fixed too
+//!    - repeat until nothing changes
 //!
-//! Results go to `out/aufgabe1/`, which is ignored.
+//! 2. GPS plot (`data/Gpsies_austria.csv`): perimeter, area and centroid.
+//!    - lines are `latitude longitude elevation index`, space separated
+//!    - points run so the interior is always on the left
+//!    - distances along great circles ("Orthodrome")
+//!    - ignore the elevation
+//!
+//! 3. Curved mirror: mirror `f(x)` on `[a, b]` with derivative `f'(x)`.
+//!    - send a bundle of straight rays at it
+//!    - reflect each ray at its intersection with the mirror
+//!    - plot the result
+//!
+//! 4. Meteorite entering the atmosphere: `a(t)`, `v(t)`, `h(t)`.
+//!    - gravity decreases with height
+//!    - drag `F_r = k v^2`, `k = c_w A rho(h) / 2`
+//!    - barometric density `rho(h) = rho_0 exp(-M g h / (R T))`, with
+//!      `M = 0.02896 kg/mol`, `R = 8.314 J/(K mol)`
+//!    - ignore everything else (supersonic, heating, ablation, ...)
+//!    - iron, `V = 1 cm^3`, `m = 7.874 g`
+//!    - `v_0` = 15, 25 and 35 km/s, entry at `h = 150 km`
+//!    - integrate by summing over small `dt`:
+//!      `a = F / m`, `v = sum a dt`, `h = sum v dt`
 
-use std::fs;
-use std::path::Path;
-use std::process::ExitCode;
-
-use data_processing::{gps, sudoku};
-
-const DATA: &str = "data";
-const OUT: &str = "out/aufgabe1";
-
-fn main() -> ExitCode {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    let result = match args.first().map(String::as_str) {
-        Some("sudoku") => run_sudoku(),
-        Some("gps") => run_gps(),
-        _ => Err("usage: aufgabe1 <sudoku | gps>".into()),
-    };
-    match result {
-        Ok(()) => ExitCode::SUCCESS,
-        Err(e) => {
-            eprintln!("{e}");
-            ExitCode::FAILURE
-        }
-    }
-}
-
-fn run_sudoku() -> Result<(), String> {
-    let out = Path::new(OUT).join("sudoku");
-    fs::create_dir_all(&out).map_err(|e| e.to_string())?;
-
-    let mut files: Vec<_> = fs::read_dir(Path::new(DATA).join("sudokus"))
-        .map_err(|e| e.to_string())?
-        .filter_map(|entry| entry.ok().map(|e| e.path()))
-        .collect();
-    files.sort();
-
-    for path in files {
-        let name = path.file_name().unwrap().to_string_lossy();
-        let text = fs::read_to_string(&path).map_err(|e| e.to_string())?;
-        let mut grid = match sudoku::parse(&text) {
-            Ok(grid) => grid,
-            Err(e) => {
-                println!("{name}: skipped, {e}");
-                continue;
-            }
-        };
-        if !sudoku::is_consistent(&grid) {
-            println!("{name}: contradictory givens");
-        } else if sudoku::solve(&mut grid) {
-            let stem = path.file_stem().unwrap().to_string_lossy();
-            fs::write(out.join(format!("{stem}.dat")), sudoku::format(&grid))
-                .map_err(|e| e.to_string())?;
-            println!("{name}: solved");
-        } else {
-            println!("{name}: no solution");
-        }
-    }
-    Ok(())
-}
-
-fn run_gps() -> Result<(), String> {
-    let text = fs::read_to_string(Path::new(DATA).join("Gpsies_austria.csv"))
-        .map_err(|e| e.to_string())?;
-    let points = gps::parse(&text)?;
-    let c = gps::centroid(&points);
-    println!("perimeter: {:.1} km", gps::perimeter(&points) / 1e3);
-    println!("area:      {:.0} km²", gps::area(&points) / 1e6);
-    println!("centroid:  {:.5}° N, {:.5}° E", c.lat, c.lon);
-    Ok(())
-}
+fn main() {}
