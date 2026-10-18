@@ -1,4 +1,4 @@
-//! Aufgabe 1, `exercises/Angaben01-02.pdf` (Beispiel 1). Due 2026-10-19.
+//! Aufgabe 1, `exercises/Angaben01-02.pdf` (Beispiel 1).
 //!
 //! Pick one of:
 //!

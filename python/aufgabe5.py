@@ -1,6 +1,6 @@
 """Aufgabe 5: loaded dice over a socket, statistics.
 
-Sheet: exercises/Angaben05.pdf. Due 2026-11-30.
+Sheet: exercises/Angaben05.pdf.
 Python port of src/bin/aufgabe5.rs. Run from the repo root.
 """
 

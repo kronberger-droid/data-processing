@@ -1,6 +1,6 @@
 """Aufgabe 6: sound generation, recording and Fourier analysis.
 
-Sheet: exercises/Angaben06.pdf. Due 2026-12-07.
+Sheet: exercises/Angaben06.pdf.
 Python port of src/bin/aufgabe6.rs. Run from the repo root.
 """
 

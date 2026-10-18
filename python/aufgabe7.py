@@ -1,6 +1,6 @@
 """Aufgabe 7: Laplace equation by relaxation, potential and E-field.
 
-Sheet: exercises/Angaben07.pdf. Due 2026-12-14.
+Sheet: exercises/Angaben07.pdf.
 Python port of src/bin/aufgabe7.rs. Run from the repo root.
 """
 

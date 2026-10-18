@@ -1,6 +1,6 @@
 """Aufgabe 1: sudoku, GPS plot, curved mirror or meteorite (pick one).
 
-Sheet: exercises/Angaben01-02.pdf, Beispiel 1. Due 2026-10-19.
+Sheet: exercises/Angaben01-02.pdf, Beispiel 1.
 Python port of src/bin/aufgabe1.rs. Run from the repo root.
 """
 
