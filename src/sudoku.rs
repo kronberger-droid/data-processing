@@ -23,6 +23,12 @@ pub fn is_consistent(grid: &Grid) -> bool {
 }
 
 /// Fill `grid` in place. Returns `false` if there is no solution.
+///
+/// The sheet suggests candidate elimination: every cell starts with all of
+/// 1..=9, givens strike their digit from their row, column and box, and a
+/// digit that fits only one cell of a unit is fixed there. Repeat until
+/// nothing changes. That alone solves the easy ones; backtracking finishes
+/// the rest.
 pub fn solve(grid: &mut Grid) -> bool {
     todo!()
 }

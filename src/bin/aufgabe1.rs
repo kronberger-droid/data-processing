@@ -1,10 +1,10 @@
-//! Aufgabe 1: sudoku, GPS polygon and Laplace relaxation.
+//! Aufgabe 1 (`exercises/Angaben01-02.pdf`, Beispiel 1): one of sudoku,
+//! GPS polygon, curved mirror or meteorite. Sudoku and GPS are wired up.
 //!
 //! Run from the repo root, the data paths are relative to it:
 //!
 //!     cargo run --bin aufgabe1 -- sudoku
 //!     cargo run --bin aufgabe1 -- gps
-//!     cargo run --bin aufgabe1 -- laplace [file]
 //!
 //! Results go to `out/aufgabe1/`, which is ignored.
 
@@ -12,9 +12,9 @@ use std::fs;
 use std::path::Path;
 use std::process::ExitCode;
 
-use data_processing::{gps, laplace, sudoku};
+use data_processing::{gps, sudoku};
 
-const DATA: &str = "Aufgabe1_Ivan/daten";
+const DATA: &str = "data";
 const OUT: &str = "out/aufgabe1";
 
 fn main() -> ExitCode {
@@ -22,8 +22,7 @@ fn main() -> ExitCode {
     let result = match args.first().map(String::as_str) {
         Some("sudoku") => run_sudoku(),
         Some("gps") => run_gps(),
-        Some("laplace") => run_laplace(args.get(1).map(String::as_str)),
-        _ => Err("usage: aufgabe1 <sudoku | gps | laplace [file]>".into()),
+        _ => Err("usage: aufgabe1 <sudoku | gps>".into()),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,
@@ -76,16 +75,5 @@ fn run_gps() -> Result<(), String> {
     println!("perimeter: {:.1} km", gps::perimeter(&points) / 1e3);
     println!("area:      {:.0} km²", gps::area(&points) / 1e6);
     println!("centroid:  {:.5}° N, {:.5}° E", c.lat, c.lon);
-    Ok(())
-}
-
-fn run_laplace(file: Option<&str>) -> Result<(), String> {
-    let path = Path::new(DATA)
-        .join("laplace_daten")
-        .join(file.unwrap_or("pl_ko30x30.dat"));
-    let text = fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-    let mut grid = laplace::parse(&text)?;
-    let sweeps = laplace::relax(&mut grid, 1e-6, 100_000);
-    println!("{}: converged after {sweeps} sweeps", path.display());
     Ok(())
 }
