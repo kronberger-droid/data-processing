@@ -1,2 +1,26 @@
 /Aufgabe1_Ivan/daten/geloste sudokus/
 .vscode
+/Aufgabe1_Ivan/daten/geloste sudokus/
+spiegel.png
+.vscode
+.claude/
+
+# Nix
+result
+result-*
+.direnv/
+
+# Rust
+/target
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/
+
+# Generated data and plots
+/out/
+/typst/*.pdf
+/typst/*.png
+/typst/*.svg
