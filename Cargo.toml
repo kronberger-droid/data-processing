@@ -1,0 +1,10 @@
+[package]
+name = "data-processing"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+authors = ["Martin Kronberger <kronberger@proton.me>"]
+description = "Exercises for the data processing course"
+publish = false
+
+[dependencies]
