@@ -26,7 +26,7 @@ eingabe = Path("Aufgabe1_Ivan/daten/sudokus")
 ausgabe = Path("Aufgabe1_Ivan/daten/geloste sudokus")
 
 # Ausgabeordner
-ausgabe.mkdir(parents=True, exist_ok=True)
+ausgabe.mkdir(exist_ok=True)
 
 
 # Datei laden
