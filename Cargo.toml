@@ -8,3 +8,4 @@ description = "Exercises for the data processing course"
 publish = false
 
 [dependencies]
+anyhow = "1.0.104"
