@@ -19,11 +19,11 @@ __pycache__/
 .venv/
 .ipynb_checkpoints/
 
-# Obsidian: settings are tracked, plugin code comes from docs/setup-obsidian.nu
-/docs/.obsidian/workspace*.json
-/docs/.obsidian/themes/
-/docs/.obsidian/plugins/*/*
-!/docs/.obsidian/plugins/*/data.json
+# Obsidian: settings are tracked, plugin code comes from setup-obsidian.nu
+/.obsidian/workspace*.json
+/.obsidian/themes/
+/.obsidian/plugins/*/*
+!/.obsidian/plugins/*/data.json
 
 # Generated data and plots
 /out/

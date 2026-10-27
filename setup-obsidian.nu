@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 
-# Fill docs/.obsidian with the plugin code and theme from the main vault.
+# Fill .obsidian with the plugin code and theme from the main vault.
 #
 # Plugin settings (data.json) and the vault config are tracked in git. The
 # plugin code is not: typst-mate alone ships a 35 MB wasm, and Obsidian never
