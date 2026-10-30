@@ -1,3 +1,5 @@
+//! Aufgabe 3, `exercises/Angaben03.pdf`: matrix products, sequential vs threads.
+
 use std::{
     fs,
     ops::{Index, IndexMut},
@@ -11,6 +13,7 @@ use data_processing::lcg::Lcg;
 #[cfg(test)]
 mod tests;
 
+/// Dense matrix, row major in one flat `Vec`.
 struct Matrix {
     rows: usize,
     cols: usize,
@@ -18,6 +21,7 @@ struct Matrix {
 }
 
 impl Matrix {
+    /// All entries 0.
     fn zeros(rows: usize, cols: usize) -> Self {
         Self {
             rows,
@@ -26,19 +30,24 @@ impl Matrix {
         }
     }
 
+    /// Entries uniform in `[-1, 1)`.
     fn random(rows: usize, cols: usize, rng: &mut Lcg) -> Self {
         let data = (0..rows * cols).map(|_| 2.0 * rng.uni01() - 1.0).collect();
         Self { rows, cols, data }
     }
 
+    /// Row `i` as a slice.
     fn row(&self, i: usize) -> &[f64] {
         &self.data[i * self.cols..(i + 1) * self.cols]
     }
 
+    /// Row `i` as a mutable slice.
     fn row_mut(&mut self, i: usize) -> &mut [f64] {
         &mut self.data[i * self.cols..(i + 1) * self.cols]
     }
 
+    /// `self * other` in i-k-j order, so the inner loop walks rows.
+    /// Errors if the inner dimensions differ.
     fn matmul(&self, other: &Matrix) -> Result<Matrix> {
         ensure!(self.cols == other.rows);
         let mut c = Matrix::zeros(self.rows, other.cols);
@@ -70,6 +79,7 @@ impl IndexMut<(usize, usize)> for Matrix {
     }
 }
 
+/// Multiplies every pair in turn. Returns the time and a checksum of the results.
 fn sequential(pairs: &[(Matrix, Matrix)]) -> Result<(Duration, f64)> {
     let start = Instant::now();
 
@@ -85,6 +95,8 @@ fn sequential(pairs: &[(Matrix, Matrix)]) -> Result<(Duration, f64)> {
     Ok((duration, checksum))
 }
 
+/// Like `sequential`, with the pairs split into one chunk per thread.
+/// Results are joined in input order, so the checksum matches.
 fn threaded(workers: usize, pairs: &[(Matrix, Matrix)]) -> Result<(Duration, f64)> {
     let chunk_size = pairs.len().div_ceil(workers);
 
