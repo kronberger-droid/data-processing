@@ -14,10 +14,10 @@ $$ y_(k+1) = (a y_k + c) mod m $$
 
 with multiplier $a$, increment $c$, modulus $m$ and seed $y_1$. Every state lies in $\{0, dots, m - 1\}$, so the sequence repeats after at most $m$ steps.
 
-| Name | $a$ | $c$ | $m$ |
-|---|---|---|---|
-| ANSI C | $1103515245$ | $12345$ | $2^31$ |
-| RANDU | $65539 = 2^16 + 3$ | $0$ | $2^31$ |
+| Name   | $a$                | $c$     | $m$    |
+| ------ | ------------------ | ------- | ------ |
+| ANSI C | $1103515245$       | $12345$ | $2^31$ |
+| RANDU  | $65539 = 2^16 + 3$ | $0$     | $2^31$ |
 
 ## Full period (Hull–Dobell)
 
