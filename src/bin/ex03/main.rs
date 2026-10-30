@@ -1,6 +1,7 @@
 use std::{
     ops::{Index, IndexMut},
-    time::Instant,
+    thread,
+    time::{Duration, Instant},
 };
 
 use anyhow::{Result, ensure};
@@ -68,18 +69,7 @@ impl IndexMut<(usize, usize)> for Matrix {
     }
 }
 
-fn main() -> Result<()> {
-    let mut rng = Lcg::ansi_c(1);
-    let (rows, cols) = (200, 200);
-    let pairs: Vec<(Matrix, Matrix)> = (0..10)
-        .map(|_| {
-            (
-                Matrix::random(rows, cols, &mut rng),
-                Matrix::random(rows, cols, &mut rng),
-            )
-        })
-        .collect();
-
+fn sequential(pairs: &[(Matrix, Matrix)]) -> Result<(Duration, f64)> {
     let start = Instant::now();
 
     let results = pairs
@@ -91,7 +81,59 @@ fn main() -> Result<()> {
 
     let checksum = results.iter().flat_map(|m| &m.data).sum::<f64>();
 
-    println!("took {duration:?} with checksum: {checksum}");
+    Ok((duration, checksum))
+}
+
+fn threaded(workers: usize, pairs: &[(Matrix, Matrix)]) -> Result<(Duration, f64)> {
+    let chunk_size = pairs.len().div_ceil(workers);
+
+    let start = Instant::now();
+
+    let results = thread::scope(|s| -> Result<Vec<Matrix>> {
+        let handles: Vec<_> = pairs
+            .chunks(chunk_size)
+            .map(|chunk| {
+                s.spawn(move || {
+                    chunk
+                        .iter()
+                        .map(|(a, b)| a.matmul(b))
+                        .collect::<Result<Vec<_>>>()
+                })
+            })
+            .collect();
+        let mut results = Vec::with_capacity(pairs.len());
+        for handle in handles {
+            results.extend(handle.join().unwrap()?);
+        }
+        Ok(results)
+    })?;
+
+    let duration = start.elapsed();
+
+    let checksum = results.iter().flat_map(|m| &m.data).sum::<f64>();
+
+    Ok((duration, checksum))
+}
+
+fn main() -> Result<()> {
+    let mut rng = Lcg::ansi_c(1);
+    let (rows, cols) = (200, 200);
+
+    let pairs: Vec<(Matrix, Matrix)> = (0..10)
+        .map(|_| {
+            (
+                Matrix::random(rows, cols, &mut rng),
+                Matrix::random(rows, cols, &mut rng),
+            )
+        })
+        .collect();
+
+    let (duration, checksum) = sequential(&pairs)?;
+    println!("sequential took {duration:?} with checksum: {checksum}");
+
+    let workers = 10;
+    let (duration, checksum) = threaded(workers, &pairs)?;
+    println!("threaded took {duration:?} with checksum: {checksum}");
 
     Ok(())
 }
