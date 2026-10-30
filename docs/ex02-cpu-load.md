@@ -54,6 +54,8 @@ By construction $sum_j p_j = 100 %$ per line, as the sheet asks. Since every val
 - **CPU count check.** `Snapshot::delta` refuses to compare snapshots with different numbers of CPU lines, and `CpuStat::delta` refuses to pair up different CPUs, so a CPU going offline between reads gives an error instead of wrong numbers.
 - **No drift.** The loop sleeps until `next += interval` rather than for a fixed 5 s. Sleeping a fixed time would add the time spent reading and printing on top of each interval and slowly drift; sleeping until a deadline keeps the intervals at 5 s on average.
 
-## Caveat: guest time is counted twice
+## Guest time
 
-The kernel adds guest time to `user` as well as to `guest`, and guest nice time to both `nice` and `guest_nice`. Summing all ten columns therefore counts it twice. On a machine not running VMs both guest columns stay $0$ and the percentages are exact. With VMs running, the total is too large by the guest time, and every mode's share comes out too small. `htop` avoids this by subtracting `guest` from `user` and `guest_nice` from `nice` before summing.
+The kernel adds guest time to `user` as well as to `guest`, and guest nice time to both `nice` and `guest_nice`. Summing all ten columns as read would count it twice, so the total would be too large and every share too small whenever a VM runs.
+
+The parser therefore subtracts `guest` from `user` and `guest_nice` from `nice`, as `htop` does. Afterwards the ten columns are disjoint: `user` means user time outside of guests, every tick is counted once, and the shares sum to exactly $100 %$.

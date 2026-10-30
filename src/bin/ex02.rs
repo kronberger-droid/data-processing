@@ -6,7 +6,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use anyhow::{Context, Result, anyhow, bail, ensure};
+use anyhow::{Context, Result, anyhow, ensure};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 enum StatKind {
@@ -196,11 +196,32 @@ impl FromStr for CpuStat {
             .map(str::parse)
             .collect::<Result<Vec<usize>, _>>()?;
 
-        let stats: [usize; 10] = numbers
+        let mut stats: [usize; 10] = numbers
             .try_into()
             .map_err(|v: Vec<usize>| anyhow!("expected 10 columns, found {}", v.len()))?;
 
+        // The kernel counts guest time in `user` too, and guest nice time in
+        // `nice`. Split it off so the columns are disjoint and sum to 100 %.
+        stats[Mode::User as usize] =
+            stats[Mode::User as usize].saturating_sub(stats[Mode::Guest as usize]);
+        stats[Mode::Nice as usize] =
+            stats[Mode::Nice as usize].saturating_sub(stats[Mode::GuestNice as usize]);
+
         Ok(CpuStat { kind, stats })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn guest_time_is_split_off_user_and_nice() {
+        let cpu: CpuStat = "cpu0 100 20 30 400 0 0 0 0 40 5".parse().unwrap();
+        assert_eq!(cpu[Mode::User], 60);
+        assert_eq!(cpu[Mode::Nice], 15);
+        // Every tick counted once: the original user + nice + system + idle.
+        assert_eq!(cpu.total(), 100 + 20 + 30 + 400);
     }
 }
 
