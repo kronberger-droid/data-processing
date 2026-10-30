@@ -114,3 +114,94 @@ fn mismatched_dimensions_are_an_error() {
     let b = mat(2, 3, &[0.0; 6]);
     assert!(a.matmul(&b).is_err());
 }
+
+// Serialization: `write_to` and `read_from` move matrices through the worker
+// pipes, so a round trip must give back the exact same bits.
+
+/// Bit patterns, so `-0.0` vs `0.0` and the last rounding bit count too.
+fn bits(m: &Matrix) -> Vec<u64> {
+    m.data.iter().map(|x| x.to_bits()).collect()
+}
+
+fn round_trip(m: &Matrix) -> Matrix {
+    let mut buf = Vec::new();
+    m.write_to(&mut buf).unwrap();
+    Matrix::read_from(&mut buf.as_slice()).unwrap()
+}
+
+#[test]
+fn round_trip_keeps_shape_and_exact_bits() {
+    #[rustfmt::skip]
+    let a = mat(2, 3, &[
+        0.1, -0.0, std::f64::consts::PI,
+        f64::MAX, f64::MIN_POSITIVE, -1e-310, // the last one is subnormal
+    ]);
+    let b = round_trip(&a);
+    assert_eq!((b.rows, b.cols), (2, 3), "shape");
+    assert_eq!(bits(&b), bits(&a));
+}
+
+#[test]
+fn round_trip_random_200x200() {
+    let a = Matrix::random(200, 200, &mut Lcg::ansi_c(1));
+    let b = round_trip(&a);
+    assert_eq!((b.rows, b.cols), (200, 200), "shape");
+    assert_eq!(bits(&b), bits(&a));
+}
+
+#[test]
+fn round_trip_empty_matrix() {
+    let b = round_trip(&mat(0, 3, &[]));
+    assert_eq!((b.rows, b.cols), (0, 3), "shape");
+    assert!(b.data.is_empty());
+}
+
+#[test]
+fn byte_layout() {
+    // rows and cols as u64 little endian, then the entries row major as f64
+    // little endian. Drop this test if you pick a different format.
+    let mut buf = Vec::new();
+    mat(1, 2, &[1.5, -2.0]).write_to(&mut buf).unwrap();
+
+    let mut expected = Vec::new();
+    expected.extend(1u64.to_le_bytes());
+    expected.extend(2u64.to_le_bytes());
+    expected.extend(1.5f64.to_le_bytes());
+    expected.extend((-2.0f64).to_le_bytes());
+    assert_eq!(buf, expected);
+}
+
+#[test]
+fn several_matrices_in_one_stream() {
+    // A worker reads pair after pair from one pipe, so `read_from` must take
+    // exactly one matrix and leave the rest of the stream alone.
+    let ms = [
+        mat(1, 2, &[1.0, 2.0]),
+        mat(2, 1, &[3.0, 4.0]),
+        mat(2, 2, &[5.0, 6.0, 7.0, 8.0]),
+    ];
+    let mut buf = Vec::new();
+    for m in &ms {
+        m.write_to(&mut buf).unwrap();
+    }
+
+    let mut reader = buf.as_slice();
+    for m in &ms {
+        let got = Matrix::read_from(&mut reader).unwrap();
+        assert_mat(&got, m.rows, m.cols, &m.data);
+    }
+    assert!(reader.is_empty(), "{} bytes left over", reader.len());
+}
+
+#[test]
+fn empty_input_is_an_error() {
+    assert!(Matrix::read_from(&mut [].as_slice()).is_err());
+}
+
+#[test]
+fn truncated_input_is_an_error() {
+    let mut buf = Vec::new();
+    mat(2, 2, &[1.0, 2.0, 3.0, 4.0]).write_to(&mut buf).unwrap();
+    buf.pop();
+    assert!(Matrix::read_from(&mut buf.as_slice()).is_err());
+}
