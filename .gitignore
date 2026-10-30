@@ -24,6 +24,7 @@ __pycache__/
 /.obsidian/themes/
 /.obsidian/plugins/*/*
 !/.obsidian/plugins/*/data.json
+/.trash/
 
 # Generated data and plots
 /out/
