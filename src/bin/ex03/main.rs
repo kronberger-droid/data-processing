@@ -1,4 +1,5 @@
 use std::{
+    fs,
     ops::{Index, IndexMut},
     thread,
     time::{Duration, Instant},
@@ -115,25 +116,53 @@ fn threaded(workers: usize, pairs: &[(Matrix, Matrix)]) -> Result<(Duration, f64
     Ok((duration, checksum))
 }
 
+const PRODUCTS: usize = 10;
+const SIZES: [usize; 2] = [200, 500];
+const WORKERS: [usize; 6] = [1, 2, 4, 5, 8, 10];
+/// Runs per configuration. Single runs vary too much to compare.
+const REPS: usize = 20;
+
+/// Min and median over `REPS` runs. Every run's checksum must equal `expected`.
+fn measure(
+    expected: f64,
+    mut run: impl FnMut() -> Result<(Duration, f64)>,
+) -> Result<(Duration, Duration)> {
+    let mut times = Vec::with_capacity(REPS);
+    for _ in 0..REPS {
+        let (duration, checksum) = run()?;
+        ensure!(
+            checksum == expected,
+            "checksum {checksum} differs from sequential {expected}"
+        );
+        times.push(duration);
+    }
+    times.sort();
+    Ok((times[0], times[REPS / 2]))
+}
+
 fn main() -> Result<()> {
     let mut rng = Lcg::ansi_c(1);
-    let (rows, cols) = (200, 200);
+    let mut csv = String::from("n,method,workers,min_ms,median_ms\n");
+    let mut record = |n: usize, method: &str, workers: usize, (min, median): (Duration, Duration)| {
+        println!("n={n:<4} {method:<10} w={workers:<2}  min {min:>9.2?}  median {median:>9.2?}");
+        let ms = |d: Duration| d.as_secs_f64() * 1e3;
+        csv += &format!("{n},{method},{workers},{:.4},{:.4}\n", ms(min), ms(median));
+    };
 
-    let pairs: Vec<(Matrix, Matrix)> = (0..10)
-        .map(|_| {
-            (
-                Matrix::random(rows, cols, &mut rng),
-                Matrix::random(rows, cols, &mut rng),
-            )
-        })
-        .collect();
+    for n in SIZES {
+        let pairs: Vec<(Matrix, Matrix)> = (0..PRODUCTS)
+            .map(|_| (Matrix::random(n, n, &mut rng), Matrix::random(n, n, &mut rng)))
+            .collect();
+        let (_, expected) = sequential(&pairs)?;
 
-    let (duration, checksum) = sequential(&pairs)?;
-    println!("sequential took {duration:?} with checksum: {checksum}");
+        record(n, "sequential", 1, measure(expected, || sequential(&pairs))?);
+        for workers in WORKERS {
+            record(n, "threads", workers, measure(expected, || threaded(workers, &pairs))?);
+        }
+    }
 
-    let workers = 10;
-    let (duration, checksum) = threaded(workers, &pairs)?;
-    println!("threaded took {duration:?} with checksum: {checksum}");
-
+    fs::create_dir_all("out")?;
+    fs::write("out/ex03.csv", csv)?;
+    println!("wrote out/ex03.csv");
     Ok(())
 }
