@@ -155,7 +155,10 @@ fn measure(
 fn main() -> Result<()> {
     let mut rng = Lcg::ansi_c(1);
     let mut csv = String::from("n,method,workers,min_ms,median_ms\n");
-    let mut record = |n: usize, method: &str, workers: usize, (min, median): (Duration, Duration)| {
+    let mut record = |n: usize,
+                      method: &str,
+                      workers: usize,
+                      (min, median): (Duration, Duration)| {
         println!("n={n:<4} {method:<10} w={workers:<2}  min {min:>9.2?}  median {median:>9.2?}");
         let ms = |d: Duration| d.as_secs_f64() * 1e3;
         csv += &format!("{n},{method},{workers},{:.4},{:.4}\n", ms(min), ms(median));
@@ -163,13 +166,28 @@ fn main() -> Result<()> {
 
     for n in SIZES {
         let pairs: Vec<(Matrix, Matrix)> = (0..PRODUCTS)
-            .map(|_| (Matrix::random(n, n, &mut rng), Matrix::random(n, n, &mut rng)))
+            .map(|_| {
+                (
+                    Matrix::random(n, n, &mut rng),
+                    Matrix::random(n, n, &mut rng),
+                )
+            })
             .collect();
         let (_, expected) = sequential(&pairs)?;
 
-        record(n, "sequential", 1, measure(expected, || sequential(&pairs))?);
+        record(
+            n,
+            "sequential",
+            1,
+            measure(expected, || sequential(&pairs))?,
+        );
         for workers in WORKERS {
-            record(n, "threads", workers, measure(expected, || threaded(workers, &pairs))?);
+            record(
+                n,
+                "threads",
+                workers,
+                measure(expected, || threaded(workers, &pairs))?,
+            );
         }
     }
 
