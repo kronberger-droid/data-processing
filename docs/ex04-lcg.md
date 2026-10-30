@@ -1,10 +1,12 @@
 ---
 tags: [ex04, random-numbers]
+sheet: "[[exercises/Angaben04.pdf]]"
+part: 1
+due: 2026-11-23
+code: src/lcg.rs
 ---
 
 # Ex04: Linear congruential generator
-
-Sheet: `exercises/Angaben04.pdf`, part 1, due 2026-11-23. Code: `src/lcg.rs`.
 
 ## Recurrence
 

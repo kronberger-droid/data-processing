@@ -1,12 +1,15 @@
 ---
 tags: [ex02, linux]
+sheet: "[[exercises/Angaben01-02.pdf]]"
+part: Beispiel 2
+due: 2026-11-09
+code: src/bin/ex02.rs
+run: cargo run --bin ex02
 ---
 
 # Ex02: CPU load counter
 
-Sheet: `exercises/Angaben01-02.pdf`, Beispiel 2, due 2026-11-09. Code: `src/bin/ex02.rs`. Run with `cargo run --bin ex02`, stop with Ctrl-C.
-
-Every 5 seconds the program reads `/proc/stat` and prints, per CPU, the share of the last interval spent in each mode.
+Every 5 seconds, until stopped with Ctrl-C, the program reads `/proc/stat` and prints, per CPU, the share of the last interval spent in each mode.
 
 ## `/proc/stat`
 

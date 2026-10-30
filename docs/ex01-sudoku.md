@@ -1,10 +1,13 @@
 ---
 tags: [ex01, sudoku]
+sheet: "[[exercises/Angaben01-02.pdf]]"
+part: Beispiel 1, option 1
+due: 2026-10-19
+code: src/bin/ex01.rs
+run: cargo run --release --bin ex01
 ---
 
 # Ex01: Sudoku solver
-
-Sheet: `exercises/Angaben01-02.pdf`, Beispiel 1, option 1, due 2026-10-19. Code: `src/bin/ex01.rs`. Run with `cargo run --release --bin ex01`.
 
 The sheet's method is candidate elimination: every cell holds a list of possible digits, and two rules shrink the lists until nothing changes. That solves the "easy" puzzles. Where the rules get stuck, the solver guesses and backtracks, so it also solves the hard ones.
 

@@ -1,10 +1,11 @@
 ---
 tags: [ex03, linear-algebra]
+sheet: "[[exercises/Angaben03.pdf]]"
+due: 2026-11-16
+code: src/bin/ex03/main.rs
 ---
 
 # Ex03: Matrix multiplication
-
-Sheet: `exercises/Angaben03.pdf`, due 2026-11-16.
 
 ## Definition
 
