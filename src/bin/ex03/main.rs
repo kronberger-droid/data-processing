@@ -1,6 +1,10 @@
-use std::ops::{Index, IndexMut};
+use std::{
+    ops::{Index, IndexMut},
+    time::Instant,
+};
 
 use anyhow::{Result, ensure};
+use data_processing::lcg::Lcg;
 
 #[cfg(test)]
 mod tests;
@@ -18,6 +22,11 @@ impl Matrix {
             cols,
             data: vec![0.0; rows * cols],
         }
+    }
+
+    fn random(rows: usize, cols: usize, rng: &mut Lcg) -> Self {
+        let data = (0..rows * cols).map(|_| 2.0 * rng.uni01() - 1.0).collect();
+        Self { rows, cols, data }
     }
 
     fn row(&self, i: usize) -> &[f64] {
@@ -60,5 +69,29 @@ impl IndexMut<(usize, usize)> for Matrix {
 }
 
 fn main() -> Result<()> {
+    let mut rng = Lcg::ansi_c(1);
+    let (rows, cols) = (200, 200);
+    let pairs: Vec<(Matrix, Matrix)> = (0..10)
+        .map(|_| {
+            (
+                Matrix::random(rows, cols, &mut rng),
+                Matrix::random(rows, cols, &mut rng),
+            )
+        })
+        .collect();
+
+    let start = Instant::now();
+
+    let results = pairs
+        .iter()
+        .map(|(a, b)| a.matmul(b))
+        .collect::<Result<Vec<_>>>()?;
+
+    let duration = start.elapsed();
+
+    let checksum = results.iter().flat_map(|m| &m.data).sum::<f64>();
+
+    println!("took {duration:?} with checksum: {checksum}");
+
     Ok(())
 }
