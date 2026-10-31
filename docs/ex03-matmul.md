@@ -67,3 +67,9 @@ With $N$ products and $P$ workers, each worker gets about $N slash P$ products. 
 $$ S = T_1 / T_P <= min(P, N) $$
 
 where $T_P$ is the runtime with $P$ workers. With $N = 10$, more than 10 workers cannot help. Overhead pushes $S$ below the bound: thread or process startup, and for processes also sending the matrices to the worker and the result back.
+
+Products are not split further, so a worker gets up to $ceil(N slash P)$ of them and the slowest worker sets the runtime. That gives a tighter bound:
+
+$$ S <= N / ceil(N / P) $$
+
+For $N = 10$, $P = 4$ gives chunks of 3, 3, 3, 1 and $S <= 3.33$, while $P = 5$ and $P = 8$ both give chunks of 2 and $S <= 5$. The measured speedup therefore rises in steps, not along $S = P$. The hardware caps it as well: with 4 physical cores, more than 4 workers only share cores.
