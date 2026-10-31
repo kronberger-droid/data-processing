@@ -1,7 +1,11 @@
-//! Aufgabe 3, `exercises/Angaben03.pdf`: matrix products, sequential vs threads.
+//! Aufgabe 3, `exercises/Angaben03.pdf`: matrix products, sequential vs threads
+//! vs processes.
 
 use std::{
-    fs, thread,
+    fs,
+    io::{self, BufRead, BufReader, BufWriter, Write},
+    process::{Command, Stdio},
+    thread,
     time::{Duration, Instant},
 };
 
@@ -61,6 +65,90 @@ fn threaded(workers: usize, pairs: &[(Matrix, Matrix)]) -> Result<(Duration, f64
     Ok((duration, checksum))
 }
 
+/// Like `threaded`, with each chunk multiplied in a child process running
+/// `worker`. Every child gets its own writer and reader thread: a pipe holds
+/// less than one result, so a child nobody reads from stalls after one product.
+fn forked(workers: usize, pairs: &[(Matrix, Matrix)]) -> Result<(Duration, f64)> {
+    let chunk_size = pairs.len().div_ceil(workers);
+    let exe = std::env::current_exe()?;
+
+    let start = Instant::now();
+
+    let results = thread::scope(|s| -> Result<Vec<Matrix>> {
+        let mut children = Vec::new();
+        let mut writers = Vec::new();
+        for chunk in pairs.chunks(chunk_size) {
+            let mut child = Command::new(&exe)
+                .arg("worker")
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .spawn()?;
+
+            let stdin = child.stdin.take().unwrap();
+            let handle = s.spawn(move || -> Result<()> {
+                let mut writer = BufWriter::new(stdin);
+                for (a, b) in chunk {
+                    a.write_to(&mut writer)?;
+                    b.write_to(&mut writer)?;
+                }
+                writer.flush()?;
+                Ok(())
+            });
+            children.push((child, chunk.len()));
+            writers.push(handle);
+        }
+
+        let readers: Vec<_> = children
+            .into_iter()
+            .map(|(mut child, n)| {
+                s.spawn(move || -> Result<Vec<Matrix>> {
+                    let mut reader = BufReader::new(child.stdout.take().unwrap());
+                    let out = (0..n)
+                        .map(|_| Matrix::read_from(&mut reader))
+                        .collect::<Result<Vec<_>>>()?;
+                    let status = child.wait()?;
+                    ensure!(status.success(), "worker exited with {status}");
+                    Ok(out)
+                })
+            })
+            .collect();
+        let mut results = Vec::with_capacity(pairs.len());
+        for r in readers {
+            results.extend(r.join().unwrap()?);
+        }
+
+        for w in writers {
+            w.join().unwrap()?;
+        }
+
+        Ok(results)
+    })?;
+
+    let duration = start.elapsed();
+    let checksum = results.iter().flat_map(|m| m.data()).sum::<f64>();
+    Ok((duration, checksum))
+}
+
+/// Child side of `forked`: reads pairs from stdin until EOF and writes each
+/// product to stdout.
+fn worker() -> Result<()> {
+    let mut reader = BufReader::new(io::stdin().lock());
+    let mut writer = BufWriter::new(io::stdout().lock());
+
+    loop {
+        if reader.fill_buf()?.is_empty() {
+            break;
+        }
+        let a = Matrix::read_from(&mut reader)?;
+        let b = Matrix::read_from(&mut reader)?;
+
+        a.matmul(&b)?.write_to(&mut writer)?;
+    }
+
+    writer.flush()?;
+    Ok(())
+}
+
 const PRODUCTS: usize = 10;
 const SIZES: [usize; 2] = [200, 500];
 const WORKERS: [usize; 6] = [1, 2, 4, 5, 8, 10];
@@ -86,6 +174,10 @@ fn measure(
 }
 
 fn main() -> Result<()> {
+    // `forked` starts this binary again with `worker` as its first argument.
+    if std::env::args().nth(1).as_deref() == Some("worker") {
+        return worker();
+    }
     let mut rng = Lcg::ansi_c(1);
     let mut csv = String::from("n,method,workers,min_ms,median_ms\n");
     let mut record = |n: usize,
@@ -108,18 +200,34 @@ fn main() -> Result<()> {
             .collect();
         let (_, expected) = sequential(&pairs)?;
 
+        println!("\n sequential with size {n}:\n");
+
         record(
             n,
             "sequential",
             1,
             measure(expected, || sequential(&pairs))?,
         );
+
+        println!("\n threaded with size {n}:\n");
+
         for workers in WORKERS {
             record(
                 n,
                 "threads",
                 workers,
                 measure(expected, || threaded(workers, &pairs))?,
+            );
+        }
+
+        println!("\n forked with size {n}:\n");
+
+        for workers in WORKERS {
+            record(
+                n,
+                "processes",
+                workers,
+                measure(expected, || forked(workers, &pairs))?,
             );
         }
     }
