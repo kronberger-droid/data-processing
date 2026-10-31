@@ -1,5 +1,6 @@
-// Speedup of the threaded matrix products over the sequential baseline.
-// Data from `cargo run --release --bin ex03`, compile from the repo root:
+// Speedup of the threaded and multi-process matrix products over the
+// sequential baseline. Data from `cargo run --release --bin ex03`, compile
+// from the repo root:
 //   typst compile --root . typst/ex03.typ
 #import "@preview/lilaq:0.5.0" as lq
 
@@ -11,11 +12,17 @@
 #let workers = rows.filter(r => r.method == "threads").map(r => int(r.workers)).dedup()
 
 /// Median speedup T_seq / T_P per worker count for matrix size `n`.
-#let speedup(n) = {
+#let speedup(n, method) = {
   let at-n = rows.filter(r => int(r.n) == n)
   let base = float(at-n.find(r => r.method == "sequential").median_ms)
-  at-n.filter(r => r.method == "threads").map(r => base / float(r.median_ms))
+  at-n.filter(r => r.method == method).map(r => base / float(r.median_ms))
 }
+
+// One color per size; threads solid, processes dashed.
+#let styles = (
+  (method: "threads", dash: none),
+  (method: "processes", dash: "dashed"),
+)
 
 #lq.diagram(
   width: 10cm,
@@ -23,6 +30,15 @@
   xlabel: [workers $P$],
   ylabel: [speedup $S = T_"seq" slash T_P$],
   legend: (position: top + left),
-  lq.plot(workers, workers, mark: none, stroke: (dash: "dashed"), label: [ideal $S = P$]),
-  ..sizes.map(n => lq.plot(workers, speedup(n), label: [$n = #n$])),
+  lq.plot(workers, workers, mark: none, color: gray, stroke: (dash: "dotted"), label: [ideal $S = P$]),
+  ..sizes
+    .enumerate()
+    .map(((i, n)) => styles.map(s => lq.plot(
+      workers,
+      speedup(n, s.method),
+      color: lq.color.map.petroff10.at(i),
+      stroke: (dash: s.dash),
+      label: [#s.method, $n = #n$],
+    )))
+    .flatten(),
 )
