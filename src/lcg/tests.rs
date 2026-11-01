@@ -61,6 +61,20 @@ fn randu_triplets_lie_on_planes() {
 }
 
 #[test]
+fn ansi_c_triplets_break_the_randu_recurrence() {
+    // Without this the test above could hold for any generator and say
+    // nothing about RANDU.
+    let m: i64 = 1 << 31;
+    let mut rng = Lcg::ansi_c(1);
+    let ys: Vec<i64> = (0..1000).map(|_| rng.rand() as i64).collect();
+    let holds = ys
+        .windows(3)
+        .filter(|w| w[2] == (6 * w[1] - 9 * w[0]).rem_euclid(m))
+        .count();
+    assert_eq!(holds, 0, "{holds} of 998 triplets satisfy it");
+}
+
+#[test]
 fn large_modulus_does_not_overflow() {
     // a * y needs ~128 bits here, so a u64 product would overflow (and panic
     // in debug builds).
