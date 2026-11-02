@@ -49,4 +49,14 @@ so every three consecutive values satisfy
 
 $$ y_(k+2) = 6 y_(k+1) - 9 y_k quad (mod 2^31) $$
 
-Divided by $m$, the triplets $(x_k, x_(k+1), x_(k+2))$ satisfy $9 x_k - 6 x_(k+1) + x_(k+2) in ZZ$. Inside the unit cube that integer can only take the values $-5, dots, 9$, so all points lie on 15 parallel planes. The 3D plot of the triplets shows exactly those planes.
+Divided by $m$, the triplets $(x_k, x_(k+1), x_(k+2))$ satisfy $9 x_k - 6 x_(k+1) + x_(k+2) in ZZ$. Inside the unit cube that integer can only take the values $-5, dots, 9$, so all points lie on 15 parallel planes.
+
+## Seeing the planes
+
+The planes are perpendicular to $bold(n) = (9, -6, 1)$, with $|bold(n)| = sqrt(118)$. For a triplet $bold(p) = (x_k, x_(k+1), x_(k+2))$ and the unit normal $bold(u) = bold(n) slash |bold(n)|$,
+
+$$ bold(u) dot bold(p) = (9 x_k - 6 x_(k+1) + x_(k+2)) / sqrt(118) in \{ j / sqrt(118) : j = -5, dots, 9 \} $$
+
+so the projection onto $bold(u)$ takes only 15 values, spaced $1 slash sqrt(118) approx 0.092$ apart. A plot with $bold(u) dot bold(p)$ on one axis and $bold(v) dot bold(p)$ on the other, for any unit $bold(v) perp bold(u)$ such as $bold(v) = (2, 3, 0) slash sqrt(13)$, views the cube edge-on along the planes, and each plane becomes a line.
+
+Turning the view just $5 degree$ out of the planes already blurs the lines into bands, which is why they are easy to miss in a freely rotated 3D plot such as gnuplot's `splot`. Computing the direction from $bold(n)$ finds them directly. `typst/ex04.typ` shows four views of both generators: ANSI C looks the same from all of them, RANDU collapses only edge-on.
