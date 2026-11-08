@@ -9,53 +9,47 @@ run: cargo run --bin ex02
 
 # Ex02: CPU load counter
 
-Every 5 seconds, until stopped with Ctrl-C, the program reads `/proc/stat` and prints, per CPU, the share of the last interval spent in each mode.
+Every 5 seconds, until stopped with Ctrl-C, read `/proc/stat`, take the difference to the previous read for every `cpu` line and print it as percentages that sum to 100 % per line.
 
 ## `/proc/stat`
 
-The lines starting with `cpu` hold cumulative counters since boot: one `cpu` line summed over all CPUs, then `cpu0`, `cpu1`, … one per CPU.
+The `cpu` lines are cumulative tick counters since boot, one line summed over all CPUs and then one per CPU:
 
 ```text
 cpu  20956078 3872580 6749463 290779321 598253 1674155 469185 0 0 0
-cpu0 1847102 296217 740951 17002230 66627 218350 158086 0 0 0
-cpu1 1251021 256243 360396 18335766 21044 79780 31139 0 0 0
+cpu0  1847102  296217  740951  17002230  66627  218350 158086 0 0 0
 ```
 
-The ten columns are time spent in each mode, in ticks of `USER_HZ` (usually 1/100 s):
-
-| # | Mode | Meaning |
-|---|---|---|
-| 0 | `user` | normal processes in user mode |
-| 1 | `nice` | niced processes in user mode |
-| 2 | `system` | kernel mode |
-| 3 | `idle` | idle |
-| 4 | `iowait` | idle while waiting for I/O |
-| 5 | `irq` | servicing interrupts |
-| 6 | `softirq` | servicing softirqs |
-| 7 | `steal` | time a hypervisor gave to other VMs |
-| 8 | `guest` | running a virtual CPU for a guest OS |
-| 9 | `guest_nice` | running a niced guest |
-
-The code mirrors this with `Mode` as the column index and `Index<Mode>` on `CpuStat`, so `cpu[Mode::Idle]` reads column 3.
+The ten columns are the time spent in each mode: `user`, `nice` (niced user processes), `system`, `idle`, `iowait` (idle while waiting for I/O), `irq`, `softirq`, `steal` (taken by the hypervisor), `guest` and `guest_nice` (running a virtual CPU for a guest OS, printed as `gnice`).
 
 ## Percentages
 
-The counters only ever grow, so the load over an interval comes from the difference between two snapshots. For mode $j$ of one CPU line:
+The counters only grow, so the load over an interval is the difference of two snapshots. For mode $j$ of one line:
 
-$$ Delta_j = n_j (t) - n_j (t - Delta t) $$
+$$ Delta_j = n_j (t) - n_j (t - Delta t), quad p_j = 100 % dot Delta_j / (sum_(l=0)^9 Delta_l) $$
 
-$$ p_j = 100 % dot Delta_j / (sum_(l=0)^9 Delta_l) $$
-
-By construction $sum_j p_j = 100 %$ per line, as the sheet asks. Since every value is a ratio of ticks, `USER_HZ` cancels out and never needs to be known. A line whose total is $0$, a CPU with no ticks at all in the interval, prints `-` instead of dividing by zero.
-
-## Details in the code
-
-- **Saturating difference.** The deltas use `saturating_sub`. The kernel documents that `iowait` can decrease in some conditions, and a plain `usize` subtraction would then panic in debug builds or wrap to a huge value in release.
-- **CPU count check.** `Snapshot::delta` refuses to compare snapshots with different numbers of CPU lines, and `CpuStat::delta` refuses to pair up different CPUs, so a CPU going offline between reads gives an error instead of wrong numbers.
-- **No drift.** The loop sleeps until `next += interval` rather than for a fixed 5 s. Sleeping a fixed time would add the time spent reading and printing on top of each interval and slowly drift; sleeping until a deadline keeps the intervals at 5 s on average.
+By construction $sum_j p_j = 100 %$. Every value is a ratio of ticks, so the tick rate `USER_HZ` cancels and never has to be known. A line with no ticks in the interval prints `-` instead of dividing by zero.
 
 ## Guest time
 
-The kernel adds guest time to `user` as well as to `guest`, and guest nice time to both `nice` and `guest_nice`. Summing all ten columns as read would count it twice, so the total would be too large and every share too small whenever a VM runs.
+The kernel counts guest time twice: in `guest` and again in `user`, likewise `guest_nice` in `nice`. Summing the raw columns then overshoots whenever a VM runs, and every share comes out too small. The parser splits it off as `htop` does:
 
-The parser therefore subtracts `guest` from `user` and `guest_nice` from `nice`, as `htop` does. Afterwards the ten columns are disjoint: `user` means user time outside of guests, every tick is counted once, and the shares sum to exactly $100 %$.
+$$ "user" <- "user" - "guest", quad "nice" <- "nice" - "guest_nice" $$
+
+Afterwards the ten columns are disjoint, every tick is counted once and the shares sum to exactly 100 %.
+
+## Details in the code
+
+- **Saturating differences.** The kernel documents that `iowait` can decrease, so the deltas use `saturating_sub` instead of panicking or wrapping.
+- **CPU count check.** Snapshots with a different number of lines, or lines for different CPUs, are an error rather than wrong numbers.
+- **No drift.** The loop sleeps until the next deadline, not for a fixed 5 s, so the time spent reading and printing does not accumulate.
+
+## Output
+
+```text
+          user    nice  system    idle  iowait     irq softirq   steal   guest   gnice
+cpu       3.9%    0.7%    1.1%   93.9%    0.0%    0.4%    0.1%    0.0%    0.0%    0.0%
+cpu0      5.4%    1.6%    1.4%   91.1%    0.0%    0.4%    0.0%    0.0%    0.0%    0.0%
+cpu1      5.4%    0.8%    1.0%   92.4%    0.0%    0.4%    0.0%    0.0%    0.0%    0.0%
+...
+```
