@@ -26,3 +26,10 @@ fn n_lines_of_three_values_in_the_unit_interval() {
         }
     }
 }
+
+#[test]
+fn constant_function_gives_the_exact_integral() {
+    // Every sample contributes exactly 3, so there is no MC noise at all.
+    let got = integrate(|_| 3.0, 1.0, 4.0, 1, 1000, &mut Lcg::ansi_c(1));
+    assert_eq!(got, 9.0);
+}

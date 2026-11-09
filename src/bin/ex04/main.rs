@@ -21,6 +21,19 @@ fn write_triplets(rng: &mut Lcg, n: usize, w: &mut impl Write) -> Result<()> {
     Ok(())
 }
 
+/// Monte Carlo estimate of the integral of `f` over the cube `[a, b]^dim` from
+/// `n` uniform samples. `f` gets one sample point of length `dim`.
+fn integrate(
+    mut f: impl FnMut(&[f64]) -> f64,
+    a: f64,
+    b: f64,
+    dim: usize,
+    n: usize,
+    rng: &mut Lcg,
+) -> f64 {
+    todo!()
+}
+
 fn main() -> Result<()> {
     let seed = 1;
     let n = 10_000;
