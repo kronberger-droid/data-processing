@@ -41,6 +41,22 @@ fn integrate(
     (b - a).powi(dim as i32) * sum / n as f64
 }
 
+/// Absolute error of the estimate of the integral of `sin` over `[0, pi]`,
+/// which is 2, from `n` samples, averaged over the seeds `1..=seeds`.
+fn sin_integral_error(n: usize, seeds: u64) -> f64 {
+    todo!()
+}
+
+/// Exact volume of the `d`-dimensional unit ball.
+fn ball_volume(d: usize) -> f64 {
+    todo!()
+}
+
+/// Monte Carlo estimate of `ball_volume(d)` from `n` samples.
+fn ball_volume_mc(d: usize, n: usize, rng: &mut Lcg) -> f64 {
+    todo!()
+}
+
 fn main() -> Result<()> {
     let seed = 1;
     let n = 10_000;

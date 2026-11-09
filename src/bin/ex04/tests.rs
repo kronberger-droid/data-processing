@@ -103,3 +103,18 @@ fn integral_of_a_product_needs_independent_coordinates() {
     let sigma = (16.0f64 / 9.0 - 1.0).sqrt();
     assert_within_5_sigma(got, 4.0, 4.0, sigma, SAMPLES);
 }
+
+#[test]
+#[should_panic(expected = "sample")]
+fn zero_samples_are_rejected() {
+    integrate(|_| 1.0, 0.0, 1.0, 1, 0, &mut Lcg::ansi_c(1));
+}
+
+#[test]
+fn error_shrinks_with_more_samples() {
+    // The error goes as 1 / sqrt(n), so 100 times the samples should give
+    // about a tenth of the error. 3 leaves room for the noise of 20 seeds.
+    let coarse = sin_integral_error(100, 20);
+    let fine = sin_integral_error(10_000, 20);
+    assert!(coarse / fine > 3.0, "{coarse} vs {fine}");
+}
