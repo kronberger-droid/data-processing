@@ -33,3 +33,26 @@ fn constant_function_gives_the_exact_integral() {
     let got = integrate(|_| 3.0, 1.0, 4.0, 1, 1000, &mut Lcg::ansi_c(1));
     assert_eq!(got, 9.0);
 }
+
+#[test]
+fn samples_are_points_inside_the_cube() {
+    // With a != 0 this catches a mapping like `a + u * b`, which overshoots b.
+    let (a, b, dim, n) = (1.0, 4.0, 3, 1000);
+    let mut calls = 0;
+    integrate(
+        |x| {
+            calls += 1;
+            assert_eq!(x.len(), dim, "point dimension");
+            for c in x {
+                assert!((a..b).contains(c), "{c} outside [{a}, {b})");
+            }
+            0.0
+        },
+        a,
+        b,
+        dim,
+        n,
+        &mut Lcg::ansi_c(1),
+    );
+    assert_eq!(calls, n, "one call per sample");
+}
