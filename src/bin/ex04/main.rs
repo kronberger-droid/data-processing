@@ -31,7 +31,14 @@ fn integrate(
     n: usize,
     rng: &mut Lcg,
 ) -> f64 {
-    todo!()
+    assert!(n > 0, "need at least one sample");
+    let mut sum = 0.0;
+    let mut x = vec![0.0; dim];
+    for _ in 0..n {
+        x.fill_with(|| a + (b - a) * rng.uni01());
+        sum += f(&x);
+    }
+    (b - a).powi(dim as i32) * sum / n as f64
 }
 
 fn main() -> Result<()> {
