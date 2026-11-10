@@ -31,7 +31,14 @@ impl Lcg {
     /// Next value in `[0, m)`. The first call returns `y_2`, not the seed.
     pub fn rand(&mut self) -> u64 {
         // `a * y` can need 128 bits.
-        self.y = ((self.a as u128 * self.y as u128 + self.c as u128) % self.m as u128) as u64;
+        let next = self.a as u128 * self.y as u128 + self.c as u128;
+        // `%` on u128 is a slow software division. For m = 2^k it only keeps
+        // the low k bits, which a mask does directly.
+        self.y = if self.m.is_power_of_two() {
+            (next & (self.m as u128 - 1)) as u64
+        } else {
+            (next % self.m as u128) as u64
+        };
         self.y
     }
 
