@@ -5,6 +5,7 @@ use std::{
     f64::consts::PI,
     fs::{self, File},
     io::{BufWriter, Write},
+    thread,
 };
 
 use anyhow::Result;
@@ -44,13 +45,26 @@ fn integrate(
 
 /// Absolute error of the estimate of the integral of `sin` over `[0, pi]`,
 /// which is 2, from `n` samples, averaged over the seeds `1..=seeds`.
+/// The seeds are independent, so they are split across one thread per core.
 fn sin_integral_error(n: usize, seeds: u64) -> f64 {
-    let total: f64 = (1..=seeds)
-        .map(|seed| {
-            let estimate = integrate(|x| x[0].sin(), 0.0, PI, 1, n, &mut Lcg::ansi_c(seed));
-            (estimate - 2.0).abs()
-        })
-        .sum();
+    let workers = thread::available_parallelism().map_or(1, |p| p.get()) as u64;
+    let total: f64 = thread::scope(|s| {
+        let handles: Vec<_> = (0..workers)
+            .map(|w| {
+                s.spawn(move || {
+                    (1..=seeds)
+                        .filter(|seed| seed % workers == w)
+                        .map(|seed| {
+                            let estimate =
+                                integrate(|x| x[0].sin(), 0.0, PI, 1, n, &mut Lcg::ansi_c(seed));
+                            (estimate - 2.0).abs()
+                        })
+                        .sum::<f64>()
+                })
+            })
+            .collect();
+        handles.into_iter().map(|h| h.join().unwrap()).sum()
+    });
     total / seeds as f64
 }
 
