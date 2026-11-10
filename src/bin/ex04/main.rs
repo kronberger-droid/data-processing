@@ -2,6 +2,7 @@
 //! Carlo integration.
 
 use std::{
+    f64::consts::PI,
     fs::{self, File},
     io::{BufWriter, Write},
 };
@@ -44,17 +45,40 @@ fn integrate(
 /// Absolute error of the estimate of the integral of `sin` over `[0, pi]`,
 /// which is 2, from `n` samples, averaged over the seeds `1..=seeds`.
 fn sin_integral_error(n: usize, seeds: u64) -> f64 {
-    todo!()
+    let total: f64 = (1..=seeds)
+        .map(|seed| {
+            let estimate = integrate(|x| x[0].sin(), 0.0, PI, 1, n, &mut Lcg::ansi_c(seed));
+            (estimate - 2.0).abs()
+        })
+        .sum();
+    total / seeds as f64
 }
 
 /// Exact volume of the `d`-dimensional unit ball.
 fn ball_volume(d: usize) -> f64 {
-    todo!()
+    let (mut v, start) = if d % 2 == 0 { (1.0, 2) } else { (2.0, 3) };
+    for k in (start..=d).step_by(2) {
+        v *= 2.0 * PI / k as f64;
+    }
+    v
 }
 
 /// Monte Carlo estimate of `ball_volume(d)` from `n` samples.
 fn ball_volume_mc(d: usize, n: usize, rng: &mut Lcg) -> f64 {
-    todo!()
+    integrate(
+        |x| {
+            if x.iter().map(|c| c * c).sum::<f64>() <= 1.0 {
+                1.0
+            } else {
+                0.0
+            }
+        },
+        -1.0,
+        1.0,
+        d,
+        n,
+        rng,
+    )
 }
 
 fn main() -> Result<()> {
@@ -67,6 +91,28 @@ fn main() -> Result<()> {
         write_triplets(&mut rng, n, &mut w)?;
         w.flush()?;
     }
+
+    let mut w = BufWriter::new(File::create("out/sin_x.dat")?);
+    writeln!(w, "n err")?;
+    for i in 0..=7 {
+        let n = 10usize.pow(i);
+        writeln!(w, "{n} {}", sin_integral_error(n, 100))?;
+    }
+    w.flush()?;
+
+    let mut w = BufWriter::new(File::create("out/sphere.dat")?);
+    writeln!(w, "dim V_b/V_c V_b_mc/V_c")?;
+    let mut rng = Lcg::ansi_c(seed);
+    for d in 1..=12 {
+        let cube = 2f64.powi(d as i32);
+        writeln!(
+            w,
+            "{d} {} {}",
+            ball_volume(d) / cube,
+            ball_volume_mc(d, 1_000_000, &mut rng) / cube
+        )?;
+    }
+    w.flush()?;
 
     Ok(())
 }
