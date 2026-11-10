@@ -211,6 +211,19 @@ impl FromStr for CpuStat {
     }
 }
 
+fn main() -> Result<()> {
+    let interval = Duration::from_secs(5);
+    let mut prev = Snapshot::read()?;
+    let mut next = Instant::now();
+    loop {
+        next += interval;
+        thread::sleep(next.saturating_duration_since(Instant::now()));
+        let current = Snapshot::read()?;
+        println!("{}\n", current.delta(&prev)?);
+        prev = current;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -222,18 +235,5 @@ mod tests {
         assert_eq!(cpu[Mode::Nice], 15);
         // Every tick counted once: the original user + nice + system + idle.
         assert_eq!(cpu.total(), 100 + 20 + 30 + 400);
-    }
-}
-
-fn main() -> Result<()> {
-    let interval = Duration::from_secs(5);
-    let mut prev = Snapshot::read()?;
-    let mut next = Instant::now();
-    loop {
-        next += interval;
-        thread::sleep(next.saturating_duration_since(Instant::now()));
-        let current = Snapshot::read()?;
-        println!("{}\n", current.delta(&prev)?);
-        prev = current;
     }
 }
