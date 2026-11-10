@@ -18,7 +18,7 @@ __pycache__/
 .venv/
 .ipynb_checkpoints/
 
-# Obsidian: settings are tracked, plugin code comes from setup-obsidian.nu
+# Obsidian: settings and plugin settings are tracked, plugin code is not
 /.obsidian/workspace*.json
 /.obsidian/themes/
 /.obsidian/plugins/*/*
