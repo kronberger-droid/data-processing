@@ -24,6 +24,8 @@ __pycache__/
 /.obsidian/plugins/*/*
 !/.obsidian/plugins/*/data.json
 /.trash/
+# The vault is the repo root. Opening docs/ on its own makes a second one.
+/docs/.obsidian/
 
 # Generated data and plots
 /out/
