@@ -29,6 +29,7 @@ __pycache__/
 
 # Generated data and plots
 /out/
+/submit/
 /typst/*.pdf
 /typst/*.png
 /typst/*.svg

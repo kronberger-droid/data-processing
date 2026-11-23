@@ -35,10 +35,13 @@
         overlays = [rust-overlay.overlays.default];
       };
     # `default` bundles rustc/cargo/clippy/rustfmt; rust-analyzer resolves the
-    # std sources through the toolchain's sysroot via rust-src.
+    # std sources through the toolchain's sysroot via rust-src. The musl target
+    # is for `scripts/bundle.nu`: a binary linked against the nix store's glibc
+    # does not start on the university server, a static one does.
     toolchainFor = pkgs:
       pkgs.rust-bin.stable.latest.default.override {
         extensions = ["rust-analyzer" "rust-src"];
+        targets = ["x86_64-unknown-linux-musl"];
       };
   in {
     devShells = forAllSystems (system: let
