@@ -1,6 +1,7 @@
 #!/usr/bin/env nu
 # Assemble a folder to rsync to the university server: Rust and Typst sources,
-# static x86_64 binaries, the data they produce and the plots as PDF. Run it in
+# static x86_64 binaries, the data they produce, the plots as PDF and
+# `bundle-readme.md` as its `README.md`. Run it in
 # the dev shell, from anywhere in the repo:
 #   nu scripts/bundle.nu
 #   rsync -av submit/ <host>:<dir>/
@@ -32,19 +33,20 @@ def main [
     }
 
     rm -rf $out
-    for dir in [bin data pdf typst] { mkdir ($out | path join $dir) }
+    for dir in [bin data typst] { mkdir ($out | path join $dir) }
     for item in $sources { cp -r $item $out }
-    # Only the sources: plots rendered next to them stay behind, `pdf/` has them.
-    cp ...(glob typst/*.typ) ($out | path join typst)
+    cp scripts/bundle-readme.md ($out | path join README.md)
     cp -r data/sudokus ($out | path join data)
     cp -r out $out
     for bin in $bins { cp ($built | path join $bin) ($out | path join bin) }
 
+    # Each plot source travels with a PDF compiled from the data just bundled.
     for plot in (glob typst/*.typ) {
-        let pdf = $out | path join pdf $"($plot | path parse | get stem).pdf"
+        cp $plot ($out | path join typst)
+        let pdf = $out | path join typst $"($plot | path parse | get stem).pdf"
         ^typst compile --root . $plot $pdf
     }
 
     print $"bundle in ($out)"
-    ls ...(glob ($out | path join "{bin,pdf}" "*")) | select name size
+    ls ...(glob ($out | path join "{bin,typst}" "*")) | select name size
 }
