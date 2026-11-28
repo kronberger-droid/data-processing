@@ -10,7 +10,6 @@
 #   cd <dir>; ./bin/ex01
 
 const target = "x86_64-unknown-linux-musl"
-const bins = [ex01 ex02 ex03 ex04]
 # Binaries whose output in `out/` feeds the plots.
 const producers = [ex03 ex04]
 const sources = [Cargo.toml Cargo.lock src]
@@ -21,6 +20,8 @@ def main [
 ] {
     let out = $out | path expand
     cd ($env.FILE_PWD | path dirname)
+    # Cargo makes one binary per entry of `src/bin`, a file or a folder.
+    let bins = ls src/bin | get name | path parse | get stem
 
     ^cargo build --release --target $target
     let built = [target $target release] | path join
