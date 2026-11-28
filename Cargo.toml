@@ -9,3 +9,4 @@ publish = false
 
 [dependencies]
 anyhow = "1.0.104"
+rustfft = "6.4.1"
