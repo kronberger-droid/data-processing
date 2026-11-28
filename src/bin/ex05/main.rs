@@ -3,6 +3,7 @@
 //!
 //! A throw is a `u8` from 1 to 6. Every statistic takes the throws or their
 //! counts as plain data, so none of them knows about the socket.
+
 use std::{
     io::{BufReader, Read, Write},
     net::TcpStream,
@@ -13,6 +14,11 @@ use anyhow::{Context, Result};
 
 #[cfg(test)]
 mod tests;
+
+/// The dice the server offers, as its `help` reply lists them.
+const IDS: [u32; 20] = [
+    0, 1, 2, 3, 4, 5, 6, 10, 11, 12, 13, 20, 21, 22, 23, 70, 71, 80, 90, 100,
+];
 
 /// How often each face came up, the count of face `f` at index `f - 1`.
 /// Panics on a throw that is not a face from 1 to 6.
@@ -96,9 +102,6 @@ fn chi_square(observed: &[[usize; 6]; 6], expected: &[[f64; 6]; 6]) -> f64 {
 
 fn main() -> Result<()> {
     let n = 100_000;
-    let ids = [
-        0, 1, 2, 3, 4, 5, 6, 10, 11, 12, 13, 20, 21, 22, 23, 70, 71, 80, 90, 100,
-    ];
 
     // The widths leave room for a die that shows a single face, which at
     // 100 000 throws is some 700 sigma off on that face.
@@ -108,16 +111,16 @@ fn main() -> Result<()> {
     }
     println!(" {:>10}", "chi2");
 
-    for id in ids {
-        let throws = &throws(n, id).with_context(|| format!("die {id}"))?;
-        let counts = face_counts(throws);
-        let entropy = entropy(&counts);
-        let deviations = deviations(&counts);
-        let chi2 = chi_square(&pair_counts(throws), &expected_pairs(&counts));
+    for id in IDS {
+        let throws = fetch_throws(n, id).with_context(|| format!("die {id}"))?;
+        let counts = face_counts(&throws);
+        let bits = entropy(&counts);
+        let sigmas = deviations(&counts);
+        let chi2 = chi_square(&pair_counts(&throws), &expected_pairs(&counts));
 
-        print!("{id:>3} {entropy:>8.4}");
-        for d in deviations {
-            print!(" {d:>+8.1}");
+        print!("{id:>3} {bits:>8.4}");
+        for s in sigmas {
+            print!(" {s:>+8.1}");
         }
         println!(" {chi2:>10.1}");
     }
@@ -125,13 +128,12 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-// Syntax: throw p1 p2
-//                   p1: number of dices
-//                   p2: number (type of dice)
-
-// p2:dict_keys([0, 1, 2, 3, 4, 5, 6, 10, 11, 12, 13, 20, 21, 22, 23, 70, 71, 80, 90, 100])
-fn throws(n: usize, id: u32) -> Result<Vec<u8>> {
+/// Asks the dice server for `n` throws of die `id` with `throw <n> <id>`.
+/// Whatever else the reply holds besides faces is skipped, so it is the
+/// count that ends the read and not the end of a line or of the connection.
+fn fetch_throws(n: usize, id: u32) -> Result<Vec<u8>> {
     let mut stream = TcpStream::connect(("localhost", 56701))?;
+    // Without it a server that accepts and then never answers hangs the read.
     stream.set_read_timeout(Some(Duration::from_secs(5)))?;
 
     writeln!(stream, "throw {n} {id}")?;
