@@ -1,41 +1,73 @@
+#!/usr/bin/env nu
 # Forward the dice server of exercise 5 from the university server, so that
 # `localhost:56701` here is the `wuerfel_server` over there.
 #
-# This is a module, not a script: a job spawned by `nu scripts/tunnel.nu`
-# would die with that process. Load it into the interactive shell instead:
+# As a module:
 #   use scripts/tunnel.nu
-#   tunnel <user>@<host>
-# Stop a background tunnel with `job kill <id>`.
+#   tunnel start <user>@<host>
+#   tunnel status
+#   tunnel stop
+# or as a script, `nu scripts/tunnel.nu start <user>@<host>`. The host can
+# also come from `$env.DICE_HOST`.
+#
+# ssh puts itself in the background once it is logged in, so the tunnel
+# outlives the shell that started it. It is reached again through a control
+# socket, which is how `stop` ends this ssh and no other.
 
-# Open the tunnel, in the foreground or as a background job.
-export def main [
-    host: string # ssh destination, as in `ssh <host>`
-    --port (-p): int = 56701 # port of the dice server, used on both ends
-]: nothing -> any {
-    let forward = $"($port):localhost:($port)"
-    # Without this ssh stays up even when the local port is already taken.
-    let args = [-N -o ExitOnForwardFailure=yes -L $forward $host]
+const default_port = 56701
 
-    let answer = input "run the tunnel in the background with job spawn? [y/N] "
-    if not ($answer | str trim | str lowercase | str starts-with y) {
-        print $"forwarding localhost:($port), ctrl-c to stop"
-        ^ssh ...$args
+# Control socket of the tunnel on `port`.
+def socket [port: int]: nothing -> path {
+    $env.XDG_RUNTIME_DIR? | default $nu.temp-dir | path join $"dice-tunnel-($port).sock"
+}
+
+# Whether the ssh behind the control socket still answers. The destination is
+# required by ssh but unused when it only talks to the socket.
+def is-up [port: int]: nothing -> bool {
+    (^ssh -S (socket $port) -O check tunnel | complete).exit_code == 0
+}
+
+# Start forwarding the port in the background.
+export def start [
+    host?: string # ssh destination, as in `ssh <host>`, else `$env.DICE_HOST`
+    --port (-p): int = $default_port # port of the dice server, used on both ends
+]: nothing -> nothing {
+    if (is-up $port) {
+        print $"already forwarding localhost:($port)"
         return
     }
-
-    # A background ssh cannot ask for a password without fighting the prompt
-    # for the terminal, so it has to get in by key or agent, or fail.
-    # The job's output never reaches the terminal, so when ssh exits the job
-    # mails what it said to the shell, tagged with its own id.
-    let id = job spawn --description $"tunnel ($forward)" {
-        let ssh = ^ssh -o BatchMode=yes ...$args | complete
-        $ssh.stderr | str trim | job send 0 --tag (job id)
+    let host = $host | default $env.DICE_HOST?
+    if $host == null {
+        error make {msg: "no host given, pass one or set $env.DICE_HOST"}
     }
-    # Mail within the grace period means ssh is already gone again.
-    let died = try { job recv --tag $id --timeout 2sec } catch { null }
-    if $died != null {
-        error make {msg: $"the tunnel to ($host) exited right away: ($died)"}
-    }
-    print $"forwarding localhost:($port) as job ($id), stop it with `job kill ($id)`"
-    $id
+    # A socket left behind by a tunnel that died makes ssh skip `-M`.
+    rm -f (socket $port)
+    # Without ExitOnForwardFailure ssh stays up when the port is already taken.
+    ^ssh -f -N -M -S (socket $port) -o ExitOnForwardFailure=yes -L $"($port):localhost:($port)" $host
+    print $"forwarding localhost:($port) to ($host), end it with `tunnel stop`"
 }
+
+# Stop forwarding the port.
+export def stop [
+    --port (-p): int = $default_port # port the tunnel was started on
+]: nothing -> nothing {
+    if not (is-up $port) {
+        print $"no tunnel on localhost:($port)"
+        return
+    }
+    ^ssh -S (socket $port) -O exit tunnel | complete | ignore
+    print $"stopped forwarding localhost:($port)"
+}
+
+# Say whether the port is being forwarded.
+export def status [
+    --port (-p): int = $default_port # port the tunnel was started on
+]: nothing -> nothing {
+    print $"localhost:($port) is (if (is-up $port) { 'forwarded' } else { 'not forwarded' })"
+}
+
+# The same three commands for `nu scripts/tunnel.nu <command>`.
+def "main start" [host?: string, --port (-p): int = $default_port] { start $host --port $port }
+def "main stop" [--port (-p): int = $default_port] { stop --port $port }
+def "main status" [--port (-p): int = $default_port] { status --port $port }
+def main [] { print "usage: nu scripts/tunnel.nu <start [host] | stop | status>" }
