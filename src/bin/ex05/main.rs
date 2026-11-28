@@ -100,23 +100,26 @@ fn main() -> Result<()> {
         0, 1, 2, 3, 4, 5, 6, 10, 11, 12, 13, 20, 21, 22, 23, 70, 71, 80, 90, 100,
     ];
 
+    // The widths leave room for a die that shows a single face, which at
+    // 100 000 throws is some 700 sigma off on that face.
+    print!("{:>3} {:>8}", "id", "entropy");
+    for face in 1..=6 {
+        print!(" {:>8}", format!("dev{face}"));
+    }
+    println!(" {:>10}", "chi2");
+
     for id in ids {
         let throws = &throws(n, id).with_context(|| format!("die {id}"))?;
         let counts = face_counts(throws);
         let entropy = entropy(&counts);
         let deviations = deviations(&counts);
         let chi2 = chi_square(&pair_counts(throws), &expected_pairs(&counts));
-        print!("{:>3} {:>8}", "id", "entropy");
-        for face in 1..=6 {
-            print!(" {:>6}", format!("dev{face}"));
-        }
-        println!(" {:>7}", "chi2");
 
         print!("{id:>3} {entropy:>8.4}");
         for d in deviations {
-            print!(" {d:>+6.1}");
+            print!(" {d:>+8.1}");
         }
-        println!(" {chi2:>7.1}");
+        println!(" {chi2:>10.1}");
     }
 
     Ok(())
