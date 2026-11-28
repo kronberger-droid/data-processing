@@ -127,3 +127,24 @@ fn expected_pairs_follow_the_measured_face_frequencies() {
     assert_close(got[2][0], 0.0);
     assert_close(got.as_flattened().iter().sum(), 2.0);
 }
+
+#[test]
+fn chi_square_sums_the_squared_distance_in_units_of_the_expectation() {
+    // Four cells off by 1 where 2 are expected, 1 / 2 each. The other 32
+    // expect nothing and must not divide by it.
+    let mut observed = [[0; 6]; 6];
+    let mut expected = [[0.0; 6]; 6];
+    for (i, j, o) in [(0, 0, 3), (0, 1, 1), (1, 0, 1), (1, 1, 3)] {
+        observed[i][j] = o;
+        expected[i][j] = 2.0;
+    }
+    assert_close(chi_square(&observed, &expected), 2.0);
+}
+
+#[test]
+fn chi_square_of_a_perfect_match_is_zero() {
+    let throws: Vec<u8> = (0..240).map(|i| i % 6 + 1).collect();
+    let observed = pair_counts(&throws);
+    let expected = observed.map(|row| row.map(|c| c as f64));
+    assert_close(chi_square(&observed, &expected), 0.0);
+}
