@@ -58,6 +58,8 @@
           ]))
           pkgs.typst
           pkgs.tinymist
+          # `aplay` and `arecord`, which `src/sound.rs` plays and records with.
+          pkgs.alsa-utils
         ];
       };
     });
